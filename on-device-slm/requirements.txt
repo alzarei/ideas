@@ -1,0 +1,9 @@
+# On-device SLM dependencies
+requests>=2.31.0
+psutil>=5.9.0
+
+# Optional: For enhanced JSON handling
+ujson>=5.0.0
+
+# Optional: For better HTTP handling
+httpx>=0.24.0
