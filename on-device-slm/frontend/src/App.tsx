@@ -24,6 +24,14 @@ interface ChatResponse {
   model_used: string;
 }
 
+// Available model options
+const AVAILABLE_MODELS = [
+  { id: 'llama3.2:3b', name: 'Llama 3.2 3B', description: 'Fast, efficient model' },
+  { id: 'bartowski/llama3.1-8b-lexi-uncensored-q4_k_m', name: 'Llama 3.1 8B Lexi-Uncensored', description: 'Creative writing, unrestricted' },
+  { id: 'dolphin-llama3:8b', name: 'Dolphin Llama 3 8B', description: 'Helpful, uncensored variant' },
+  { id: 'nous-hermes2:8b-llama3-q4_0', name: 'Nous Hermes 2 8B', description: 'High-quality reasoning' }
+];
+
 const App: React.FC = () => {
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -34,6 +42,7 @@ const App: React.FC = () => {
   const [stylePrompt, setStylePrompt] = useState('');
   const [styleExamples, setStyleExamples] = useState('');
   const [wordLimit, setWordLimit] = useState(200);
+  const [selectedModel, setSelectedModel] = useState('llama3.2:3b');
 
   useEffect(() => {
     checkHealth();
@@ -64,7 +73,7 @@ const App: React.FC = () => {
     try {
       const response = await axios.post<ChatResponse>('/api/chat', {
         message: inputMessage,
-        model: 'llama3.2:3b'
+        model: selectedModel
       });
 
       const assistantMessage: ChatMessage = {
@@ -104,7 +113,7 @@ const App: React.FC = () => {
         prompt: stylePrompt,
         examples: styleExamples.trim() ? styleExamples.split('\n---\n').filter(ex => ex.trim()) : [],
         word_limit: wordLimit,
-        model: 'llama3.2:3b'
+        model: selectedModel
       });
 
       const styledMessage: ChatMessage = {
@@ -134,6 +143,14 @@ const App: React.FC = () => {
     }
   };
 
+  const getSelectedModelInfo = () => {
+    return AVAILABLE_MODELS.find(model => model.id === selectedModel) || AVAILABLE_MODELS[0];
+  };
+
+  const isModelAvailable = () => {
+    return health?.available_models?.includes(selectedModel) || false;
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent, action: () => void) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -145,16 +162,40 @@ const App: React.FC = () => {
     <div className="app">
       <header className="app-header">
         <h1>🤖 On-Device LLM Assistant</h1>
-        <div className="status-indicator">
-          {health ? (
-            <span className={`status ${health.status}`}>
-              {health.ollama_running ? '🟢' : '🟡'} 
-              {health.status === 'healthy' ? 'Online' : 
-               health.status === 'demo_mode' ? 'Demo Mode' : 'Offline'}
-            </span>
-          ) : (
-            <span className="status checking">🔄 Checking...</span>
-          )}
+        <div className="header-controls">
+          <div className="model-selector">
+            <label>Model:</label>
+            <select 
+              value={selectedModel} 
+              onChange={(e) => setSelectedModel(e.target.value)}
+              className="model-select"
+              title={getSelectedModelInfo().description}
+            >
+              {AVAILABLE_MODELS.map(model => (
+                <option key={model.id} value={model.id}>
+                  {model.name} {health?.available_models?.includes(model.id) ? '✓' : '⚠️'}
+                </option>
+              ))}
+            </select>
+            <div className="model-status">
+              {isModelAvailable() ? (
+                <span className="model-available" title="Model is available">✓</span>
+              ) : (
+                <span className="model-unavailable" title="Model not installed - run: ollama pull">⚠️</span>
+              )}
+            </div>
+          </div>
+          <div className="status-indicator">
+            {health ? (
+              <span className={`status ${health.status}`}>
+                {health.ollama_running ? '🟢' : '🟡'} 
+                {health.status === 'healthy' ? 'Online' : 
+                 health.status === 'demo_mode' ? 'Demo Mode' : 'Offline'}
+              </span>
+            ) : (
+              <span className="status checking">🔄 Checking...</span>
+            )}
+          </div>
         </div>
       </header>
 
@@ -174,6 +215,19 @@ const App: React.FC = () => {
       </nav>
 
       <main className="main-content">
+        {!isModelAvailable() && health?.ollama_running && (
+          <div className="model-warning">
+            <div className="warning-content">
+              <span className="warning-icon">⚠️</span>
+              <div className="warning-text">
+                <strong>Model not available:</strong> {getSelectedModelInfo().name} is not installed.
+                <br />
+                <span className="install-command">Run: <code>ollama pull {selectedModel}</code></span>
+              </div>
+            </div>
+          </div>
+        )}
+        
         {activeTab === 'chat' ? (
           <div className="chat-container">
             <div className="messages-container">
