@@ -23,6 +23,7 @@ try:
     from examples.style_training import StyleTrainer
     from examples.token_management import TokenManager
     from model_manager import model_config, ModelConfig
+    from conversation_manager import conversation_manager, ChatMessage, Conversation
 except ImportError as e:
     print(f"Warning: Could not import modules: {e}")
     # We'll create fallback implementations
@@ -61,6 +62,7 @@ except:
 class ChatRequest(BaseModel):
     message: str
     model: str = "llama3.2:3b"
+    conversation_id: Optional[str] = None  # For continuing conversations
 
 class ChatResponse(BaseModel):
     response: str
@@ -68,6 +70,29 @@ class ChatResponse(BaseModel):
     response_time: float
     word_count: int
     model_used: str
+    conversation_id: str  # Always return conversation ID
+    message_id: str  # ID of the assistant's response
+
+class ConversationCreateRequest(BaseModel):
+    model_id: str
+    title: Optional[str] = None
+    system_prompt: Optional[str] = None
+    max_tokens: int = 8192
+
+class ConversationResponse(BaseModel):
+    id: str
+    title: str
+    model_id: str
+    message_count: int
+    created_at: str
+    updated_at: str
+
+class MessageResponse(BaseModel):
+    id: str
+    role: str
+    content: str
+    timestamp: str
+    token_count: Optional[int] = None
 
 class StyleRequest(BaseModel):
     prompt: str
@@ -153,40 +178,104 @@ async def health_check():
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_completion(request: ChatRequest):
-    """Generate chat response with token management"""
+    """Generate chat response with conversation context"""
     if not SERVICES_AVAILABLE:
-        # Demo response
+        # Demo response with conversation support
+        conv_id = request.conversation_id or conversation_manager.create_conversation(
+            model_id=request.model,
+            title="Demo Chat"
+        )
+        
+        # Add user message to demo conversation
+        user_message = conversation_manager.add_message(conv_id, "user", request.message)
+        
+        # Add demo assistant response
+        demo_response = "Demo mode: This would be a response from your local Llama model. Install Ollama and restart to enable full functionality."
+        assistant_message = conversation_manager.add_message(conv_id, "assistant", demo_response, token_count=20)
+        
         return ChatResponse(
-            response="Demo mode: This would be a response from your local Llama model. Install Ollama and restart to enable full functionality.",
+            response=demo_response,
             token_info={"estimated_tokens": 20, "context_limit": 8192, "fits": True, "usage_percent": 0.24},
             response_time=0.5,
             word_count=25,
-            model_used=request.model
+            model_used=request.model,
+            conversation_id=conv_id,
+            message_id=assistant_message.id
         )
     
     try:
         start_time = time.time()
         
-        # Check token limits
-        token_check = token_manager.check_prompt_size(request.model, request.message)
-        
-        if not token_check["fits"]:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Prompt exceeds token limit: {token_check['estimated_tokens']} > {token_check['context_limit']}"
+        # Get or create conversation
+        conv_id = request.conversation_id
+        if not conv_id:
+            # Create new conversation
+            conv_id = conversation_manager.create_conversation(
+                model_id=request.model,
+                title=f"Chat with {request.model}"
             )
         
-        # Generate response
-        response_text = ollama_client.generate(request.model, request.message)
+        # Add user message to conversation
+        user_message = conversation_manager.add_message(conv_id, "user", request.message)
+        
+        # Get conversation history for model
+        conversation_history = conversation_manager.get_conversation_for_model(conv_id)
+        
+        # Check if we need to trim conversation
+        conversation = conversation_manager.get_conversation(conv_id)
+        if conversation and conversation.total_tokens > conversation.max_tokens * 0.8:
+            trimmed = conversation_manager.trim_conversation(conv_id)
+            if trimmed > 0:
+                print(f"Trimmed {trimmed} messages from conversation {conv_id}")
+                conversation_history = conversation_manager.get_conversation_for_model(conv_id)
+        
+        # Generate response using conversation context
+        if len(conversation_history) == 1:
+            # Single message, use simple generation
+            response_text = ollama_client.generate(request.model, request.message)
+        else:
+            # Multi-message conversation - use chat endpoint if available
+            try:
+                response_text = ollama_client.chat(request.model, conversation_history)
+            except AttributeError:
+                # Fallback to simple generation with last message only
+                response_text = ollama_client.generate(request.model, request.message)
+        
         response_time = time.time() - start_time
         word_count = len(response_text.split())
         
+        # Estimate token counts (rough approximation: 1 token ≈ 0.75 words)
+        response_tokens = int(word_count / 0.75)
+        user_tokens = int(len(request.message.split()) / 0.75)
+        
+        # Add assistant response to conversation
+        assistant_message = conversation_manager.add_message(
+            conv_id, 
+            "assistant", 
+            response_text, 
+            token_count=response_tokens
+        )
+        
+        # Update user message token count
+        user_message.token_count = user_tokens
+        
+        # Check total conversation tokens
+        total_tokens = sum(msg.token_count or 0 for msg in conversation.messages)
+        token_info = {
+            "estimated_tokens": total_tokens,
+            "context_limit": conversation.max_tokens,
+            "fits": total_tokens < conversation.max_tokens,
+            "usage_percent": round((total_tokens / conversation.max_tokens) * 100, 2)
+        }
+        
         return ChatResponse(
             response=response_text,
-            token_info=token_check,
+            token_info=token_info,
             response_time=response_time,
             word_count=word_count,
-            model_used=request.model
+            model_used=request.model,
+            conversation_id=conv_id,
+            message_id=assistant_message.id
         )
         
     except Exception as e:
@@ -469,6 +558,129 @@ async def serve_frontend():
         </body>
         </html>
         """)
+
+# ==================== CONVERSATION MANAGEMENT ENDPOINTS ====================
+
+@app.post("/api/conversations", response_model=ConversationResponse)
+async def create_conversation(request: ConversationCreateRequest):
+    """Create a new conversation"""
+    try:
+        conversation_id = conversation_manager.create_conversation(
+            model_id=request.model_id,
+            title=request.title,
+            system_prompt=request.system_prompt,
+            max_tokens=request.max_tokens
+        )
+        
+        conversation = conversation_manager.get_conversation(conversation_id)
+        if not conversation:
+            raise HTTPException(status_code=500, detail="Failed to create conversation")
+        
+        return ConversationResponse(
+            id=conversation.id,
+            title=conversation.title,
+            model_id=conversation.model_id,
+            message_count=len(conversation.messages),
+            created_at=conversation.created_at.isoformat(),
+            updated_at=conversation.updated_at.isoformat()
+        )
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create conversation: {str(e)}")
+
+@app.get("/api/conversations", response_model=List[ConversationResponse])
+async def list_conversations():
+    """List all conversations"""
+    try:
+        conversations = conversation_manager.list_conversations()
+        return [
+            ConversationResponse(
+                id=conv['id'],
+                title=conv['title'],
+                model_id=conv['model_id'],
+                message_count=conv['message_count'],
+                created_at=conv['created_at'],
+                updated_at=conv['updated_at']
+            )
+            for conv in conversations
+        ]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list conversations: {str(e)}")
+
+@app.get("/api/conversations/{conversation_id}")
+async def get_conversation(conversation_id: str):
+    """Get a specific conversation with all messages"""
+    try:
+        conversation = conversation_manager.get_conversation(conversation_id)
+        if not conversation:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        
+        return {
+            "id": conversation.id,
+            "title": conversation.title,
+            "model_id": conversation.model_id,
+            "created_at": conversation.created_at.isoformat(),
+            "updated_at": conversation.updated_at.isoformat(),
+            "total_tokens": conversation.total_tokens,
+            "max_tokens": conversation.max_tokens,
+            "system_prompt": conversation.system_prompt,
+            "messages": [
+                MessageResponse(
+                    id=msg.id,
+                    role=msg.role,
+                    content=msg.content,
+                    timestamp=msg.timestamp.isoformat(),
+                    token_count=msg.token_count
+                )
+                for msg in conversation.messages
+            ]
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get conversation: {str(e)}")
+
+@app.delete("/api/conversations/{conversation_id}")
+async def delete_conversation(conversation_id: str):
+    """Delete a conversation"""
+    try:
+        if conversation_manager.delete_conversation(conversation_id):
+            return {"message": "Conversation deleted successfully"}
+        else:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete conversation: {str(e)}")
+
+@app.put("/api/conversations/{conversation_id}/title")
+async def update_conversation_title(conversation_id: str, title: Dict[str, str]):
+    """Update conversation title"""
+    try:
+        if conversation_manager.update_conversation_title(conversation_id, title["title"]):
+            return {"message": "Title updated successfully"}
+        else:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update title: {str(e)}")
+
+@app.get("/api/conversations/{conversation_id}/export")
+async def export_conversation(conversation_id: str):
+    """Export conversation to JSON"""
+    try:
+        conversation_data = conversation_manager.export_conversation(conversation_id)
+        if not conversation_data:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        
+        return conversation_data
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to export conversation: {str(e)}")
+
+# ==================== END CONVERSATION ENDPOINTS ====================
 
 # Catch-all route for React Router (SPA support)
 @app.get("/{path:path}")
