@@ -16,11 +16,13 @@ from typing import List, Dict, Any, Optional
 
 # Add parent directory to path for importing our existing modules
 sys.path.append(str(Path(__file__).parent.parent))
+sys.path.append(str(Path(__file__).parent.parent / "config"))
 
 try:
     from examples.hello_world import OllamaClient
     from examples.style_training import StyleTrainer
     from examples.token_management import TokenManager
+    from model_manager import model_config, ModelConfig
 except ImportError as e:
     print(f"Warning: Could not import modules: {e}")
     # We'll create fallback implementations
@@ -47,9 +49,12 @@ try:
     ollama_client = OllamaClient()
     style_trainer = StyleTrainer()
     token_manager = TokenManager()
+    # Initialize model config manager
+    model_manager = model_config
     SERVICES_AVAILABLE = True
 except:
     SERVICES_AVAILABLE = False
+    model_manager = None
     print("Warning: AI services not available. Running in demo mode.")
 
 # Pydantic models for API
@@ -99,12 +104,47 @@ async def health_check():
     
     try:
         is_running = ollama_client.is_running()
-        models = ollama_client.list_models() if is_running else []
+        ollama_models = ollama_client.list_models() if is_running else []
+        
+        # Get model names from ollama
+        ollama_model_names = [model['name'] if isinstance(model, dict) else str(model) for model in ollama_models]
+        
+        # Use the same model availability logic as in /api/models/config
+        # to return configured model IDs that are actually available
+        available_configured_models = []
+        if is_running:
+            # Helper function to check if a model is available in Ollama (same as in config endpoint)
+            def is_model_available(model_id: str, ollama_names: List[str]) -> bool:
+                # Check exact match first
+                if model_id in ollama_names:
+                    return True
+                
+                # Check with :latest suffix
+                if f"{model_id}:latest" in ollama_names:
+                    return True
+                
+                # Check if any ollama model starts with our model_id
+                for ollama_name in ollama_names:
+                    if ollama_name.startswith(f"{model_id}:"):
+                        return True
+                    # Also check the reverse - if model_id has a tag but ollama has :latest
+                    if ":" in model_id:
+                        base_name = model_id.split(":")[0]
+                        if ollama_name == f"{base_name}:latest":
+                            return True
+                
+                return False
+            
+            # Get configured models and check which are available
+            config = model_manager.export_frontend_config()
+            for model in config["available_models"]:
+                if is_model_available(model["id"], ollama_model_names):
+                    available_configured_models.append(model["id"])
         
         return HealthResponse(
             status="healthy" if is_running else "ollama_offline",
             ollama_running=is_running,
-            available_models=models,
+            available_models=available_configured_models,
             services_available=True,
             api_version="1.0.0"
         )
@@ -223,6 +263,158 @@ async def get_available_models():
         return {"models": models, "demo": False}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch models: {str(e)}")
+
+@app.get("/api/models/config")
+async def get_model_configuration():
+    """Get the complete model configuration for frontend"""
+    if not SERVICES_AVAILABLE or not model_manager:
+        return {
+            "available_models": [
+                {
+                    "id": "llama3.2:3b",
+                    "name": "Llama 3.2 3B (Demo)",
+                    "description": "Demo mode - install Ollama for full functionality",
+                    "category": "general",
+                    "size_gb": 2.0,
+                    "install_command": "ollama pull llama3.2:3b"
+                }
+            ],
+            "default_model": "llama3.2:3b",
+            "categories": {"general": {"name": "General Purpose", "description": "Demo models"}},
+            "demo": True
+        }
+    
+    try:
+        # Get Ollama models to cross-reference availability
+        ollama_models = []
+        if ollama_client.is_running():
+            ollama_models = ollama_client.list_models()
+            ollama_model_names = [model['name'] if isinstance(model, dict) else str(model) for model in ollama_models]
+        else:
+            ollama_model_names = []
+        
+        # Get configured models and mark which are available
+        config = model_manager.export_frontend_config()
+        
+        # Helper function to check if a model is available in Ollama
+        def is_model_available(model_id: str, ollama_names: List[str]) -> bool:
+            # Check exact match first
+            if model_id in ollama_names:
+                return True
+            
+            # Check with :latest suffix
+            if f"{model_id}:latest" in ollama_names:
+                return True
+            
+            # Check if any ollama model starts with our model_id
+            for ollama_name in ollama_names:
+                if ollama_name.startswith(f"{model_id}:"):
+                    return True
+                # Also check the reverse - if model_id has a tag but ollama has :latest
+                if ":" in model_id:
+                    base_name = model_id.split(":")[0]
+                    if ollama_name == f"{base_name}:latest":
+                        return True
+            
+            return False
+        
+        # Add availability status to each model
+        for model in config["available_models"]:
+            model["available"] = is_model_available(model["id"], ollama_model_names)
+        
+        config["demo"] = False
+        config["ollama_models"] = ollama_model_names
+        
+        return config
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get model config: {str(e)}")
+
+@app.post("/api/models/config/default")
+async def set_default_model(request: dict):
+    """Set the default model"""
+    if not SERVICES_AVAILABLE or not model_manager:
+        raise HTTPException(status_code=503, detail="Model configuration not available in demo mode")
+    
+    model_id = request.get("model_id")
+    if not model_id:
+        raise HTTPException(status_code=400, detail="model_id is required")
+    
+    try:
+        success = model_manager.set_default_model(model_id)
+        if success:
+            return {"success": True, "default_model": model_id}
+        else:
+            raise HTTPException(status_code=404, detail="Model not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to set default model: {str(e)}")
+
+@app.post("/api/models/config/enable")
+async def enable_model(request: dict):
+    """Enable a model in the configuration"""
+    if not SERVICES_AVAILABLE or not model_manager:
+        raise HTTPException(status_code=503, detail="Model configuration not available in demo mode")
+    
+    model_id = request.get("model_id")
+    if not model_id:
+        raise HTTPException(status_code=400, detail="model_id is required")
+    
+    try:
+        success = model_manager.enable_model(model_id)
+        if success:
+            return {"success": True, "model_id": model_id, "enabled": True}
+        else:
+            raise HTTPException(status_code=404, detail="Model not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to enable model: {str(e)}")
+
+@app.post("/api/models/config/disable")
+async def disable_model(request: dict):
+    """Disable a model in the configuration"""
+    if not SERVICES_AVAILABLE or not model_manager:
+        raise HTTPException(status_code=503, detail="Model configuration not available in demo mode")
+    
+    model_id = request.get("model_id")
+    if not model_id:
+        raise HTTPException(status_code=400, detail="model_id is required")
+    
+    try:
+        success = model_manager.disable_model(model_id)
+        if success:
+            return {"success": True, "model_id": model_id, "enabled": False}
+        else:
+            raise HTTPException(status_code=404, detail="Model not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to disable model: {str(e)}")
+
+@app.post("/api/models/config/add")
+async def add_model(request: dict):
+    """Add a new model to the configuration"""
+    if not SERVICES_AVAILABLE or not model_manager:
+        raise HTTPException(status_code=503, detail="Model configuration not available in demo mode")
+    
+    try:
+        model_config_data = ModelConfig(
+            id=request["id"],
+            name=request["name"],
+            description=request["description"],
+            category=request.get("category", "general"),
+            size_gb=request.get("size_gb", 0.0),
+            context_window=request.get("context_window", 4096),
+            recommended_use=request.get("recommended_use", []),
+            install_command=request.get("install_command", f"ollama pull {request['id']}"),
+            enabled=request.get("enabled", True),
+            priority=request.get("priority", 10)
+        )
+        
+        success = model_manager.add_model(model_config_data)
+        if success:
+            return {"success": True, "model": model_config_data.id}
+        else:
+            raise HTTPException(status_code=409, detail="Model already exists or failed to add")
+    except KeyError as e:
+        raise HTTPException(status_code=400, detail=f"Missing required field: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to add model: {str(e)}")
 
 # Mount static files for React frontend
 frontend_build_path = Path(__file__).parent.parent / "frontend" / "build"

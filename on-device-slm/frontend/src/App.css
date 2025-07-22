@@ -133,6 +133,24 @@ body {
   background: rgba(158, 158, 158, 0.2);
 }
 
+/* Config Button */
+.config-button {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.config-button:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
 /* Tab Navigation */
 .tab-navigation {
   display: flex;

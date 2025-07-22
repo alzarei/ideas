@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
+import { useModelConfig, ModelConfig } from './hooks/useModelConfig';
+import ModelManager from './components/ModelManager';
 
 interface HealthStatus {
   status: string;
@@ -24,15 +26,14 @@ interface ChatResponse {
   model_used: string;
 }
 
-// Available model options
-const AVAILABLE_MODELS = [
-  { id: 'llama3.2:3b', name: 'Llama 3.2 3B', description: 'Fast, efficient model' },
-  { id: 'bartowski/llama3.1-8b-lexi-uncensored-q4_k_m', name: 'Llama 3.1 8B Lexi-Uncensored', description: 'Creative writing, unrestricted' },
-  { id: 'dolphin-llama3:8b', name: 'Dolphin Llama 3 8B', description: 'Helpful, uncensored variant' },
-  { id: 'nous-hermes2:8b-llama3-q4_0', name: 'Nous Hermes 2 8B', description: 'High-quality reasoning' }
-];
-
 const App: React.FC = () => {
+  const {
+    config: modelConfig,
+    loading: modelConfigLoading,
+    error: modelConfigError,
+    getEnabledModels,
+    getModelById
+  } = useModelConfig();
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [writeResults, setWriteResults] = useState<ChatMessage[]>([]);
@@ -42,11 +43,22 @@ const App: React.FC = () => {
   const [stylePrompt, setStylePrompt] = useState('');
   const [styleExamples, setStyleExamples] = useState('');
   const [wordLimit, setWordLimit] = useState(200);
-  const [selectedModel, setSelectedModel] = useState('llama3.2:3b');
+  const [selectedModel, setSelectedModel] = useState('');
+  const [showModelManager, setShowModelManager] = useState(false);
+
+  // Get available models from config
+  const availableModels = modelConfig ? getEnabledModels() : [];
 
   useEffect(() => {
     checkHealth();
   }, []);
+
+  // Set default model when config loads
+  useEffect(() => {
+    if (modelConfig && !selectedModel) {
+      setSelectedModel(modelConfig.default_model);
+    }
+  }, [modelConfig, selectedModel]);
 
   const checkHealth = async () => {
     try {
@@ -144,7 +156,17 @@ const App: React.FC = () => {
   };
 
   const getSelectedModelInfo = () => {
-    return AVAILABLE_MODELS.find(model => model.id === selectedModel) || AVAILABLE_MODELS[0];
+    if (!modelConfig) return { 
+      name: 'Loading...', 
+      description: 'Loading model configuration...',
+      install_command: ''
+    };
+    const model = getModelById(selectedModel) || availableModels[0];
+    return model || { 
+      name: 'No Models', 
+      description: 'No models available',
+      install_command: `ollama pull ${selectedModel}`
+    };
   };
 
   const isModelAvailable = () => {
@@ -170,12 +192,19 @@ const App: React.FC = () => {
               onChange={(e) => setSelectedModel(e.target.value)}
               className="model-select"
               title={getSelectedModelInfo().description}
+              disabled={modelConfigLoading}
             >
-              {AVAILABLE_MODELS.map(model => (
-                <option key={model.id} value={model.id}>
-                  {model.name} {health?.available_models?.includes(model.id) ? '✓' : '⚠️'}
-                </option>
-              ))}
+              {modelConfigLoading ? (
+                <option value="">Loading models...</option>
+              ) : availableModels.length > 0 ? (
+                availableModels.map(model => (
+                  <option key={model.id} value={model.id}>
+                    {model.name} {health?.available_models?.includes(model.id) ? '✓' : '⚠️'}
+                  </option>
+                ))
+              ) : (
+                <option value="">No models configured</option>
+              )}
             </select>
             <div className="model-status">
               {isModelAvailable() ? (
@@ -185,6 +214,13 @@ const App: React.FC = () => {
               )}
             </div>
           </div>
+          <button 
+            className="config-button"
+            onClick={() => setShowModelManager(true)}
+            title="Configure Models"
+          >
+            ⚙️ Models
+          </button>
           <div className="status-indicator">
             {health ? (
               <span className={`status ${health.status}`}>
@@ -215,14 +251,25 @@ const App: React.FC = () => {
       </nav>
 
       <main className="main-content">
-        {!isModelAvailable() && health?.ollama_running && (
+        {modelConfigError && (
+          <div className="model-warning">
+            <div className="warning-content">
+              <span className="warning-icon">⚠️</span>
+              <div className="warning-text">
+                <strong>Configuration Error:</strong> {modelConfigError}
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {!isModelAvailable() && health?.ollama_running && selectedModel && (
           <div className="model-warning">
             <div className="warning-content">
               <span className="warning-icon">⚠️</span>
               <div className="warning-text">
                 <strong>Model not available:</strong> {getSelectedModelInfo().name} is not installed.
                 <br />
-                <span className="install-command">Run: <code>ollama pull {selectedModel}</code></span>
+                <span className="install-command">Run: <code>{getSelectedModelInfo().install_command || `ollama pull ${selectedModel}`}</code></span>
               </div>
             </div>
           </div>
@@ -386,6 +433,11 @@ const App: React.FC = () => {
           </div>
         )}
       </main>
+
+      <ModelManager 
+        isOpen={showModelManager}
+        onClose={() => setShowModelManager(false)}
+      />
 
       <footer className="app-footer">
         <div className="footer-info">
