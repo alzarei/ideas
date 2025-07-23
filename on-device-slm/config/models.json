@@ -1,0 +1,205 @@
+{
+  "available_models": [
+    {
+      "id": "llama3.2:3b",
+      "name": "Llama 3.2 3B",
+      "description": "Fast, efficient model for general chat",
+      "category": "general",
+      "size_gb": 2.0,
+      "context_window": 8192,
+      "recommended_use": [
+        "chat",
+        "qa",
+        "summarization"
+      ],
+      "install_command": "ollama pull llama3.2:3b",
+      "enabled": true,
+      "priority": 1
+    },
+    {
+      "id": "dolphin-llama3:8b",
+      "name": "Dolphin Llama 3 8B",
+      "description": "Advanced variant with good reasoning capabilities",
+      "category": "reasoning",
+      "size_gb": 4.7,
+      "context_window": 8192,
+      "recommended_use": [
+        "chat",
+        "reasoning",
+        "coding"
+      ],
+      "install_command": "ollama pull dolphin-llama3:8b",
+      "enabled": true,
+      "priority": 3
+    },
+    {
+      "id": "llama3.1:8b",
+      "name": "Llama 3.1 8B Creative",
+      "description": "Creative writing model for storytelling and fiction",
+      "category": "creative",
+      "size_gb": 4.8,
+      "context_window": 8192,
+      "recommended_use": [
+        "creative_writing",
+        "storytelling",
+        "fiction"
+      ],
+      "install_command": "ollama pull llama3.1:8b",
+      "enabled": true,
+      "priority": 4
+    },
+    {
+      "id": "nous-hermes2",
+      "name": "Nous Hermes 2",
+      "description": "High-quality reasoning and analytical capabilities",
+      "category": "reasoning",
+      "size_gb": 6.1,
+      "context_window": 8192,
+      "recommended_use": [
+        "analysis",
+        "reasoning",
+        "problem_solving"
+      ],
+      "install_command": "ollama pull nous-hermes2",
+      "enabled": true,
+      "priority": 5
+    },
+    {
+      "id": "codellama:7b",
+      "name": "Code Llama 7B",
+      "description": "Specialized model for code generation and programming",
+      "category": "coding",
+      "size_gb": 3.8,
+      "context_window": 16384,
+      "recommended_use": [
+        "coding",
+        "programming",
+        "technical_writing"
+      ],
+      "install_command": "ollama pull codellama:7b",
+      "enabled": false,
+      "priority": 6
+    },
+    {
+      "id": "mistral:7b",
+      "name": "Mistral 7B",
+      "description": "Efficient and capable general-purpose model",
+      "category": "general",
+      "size_gb": 4.1,
+      "context_window": 8192,
+      "recommended_use": [
+        "chat",
+        "writing",
+        "qa"
+      ],
+      "install_command": "ollama pull mistral:7b",
+      "enabled": false,
+      "priority": 7
+    },
+    {
+      "id": "gemma2:9b",
+      "name": "Google Gemma 2 9B",
+      "description": "Google's powerful open model with excellent performance",
+      "category": "general",
+      "size_gb": 5.5,
+      "context_window": 8192,
+      "recommended_use": [
+        "chat",
+        "analysis",
+        "reasoning"
+      ],
+      "install_command": "ollama pull gemma2:9b",
+      "enabled": false,
+      "priority": 8
+    },
+    {
+      "id": "phi3:mini",
+      "name": "Microsoft Phi-3 Mini",
+      "description": "Microsoft's efficient small model with strong capabilities",
+      "category": "general",
+      "size_gb": 2.3,
+      "context_window": 128000,
+      "recommended_use": [
+        "chat",
+        "reasoning",
+        "qa"
+      ],
+      "install_command": "ollama pull phi3:mini",
+      "enabled": false,
+      "priority": 9
+    },
+    {
+      "id": "qwen2:7b",
+      "name": "Qwen 2 7B",
+      "description": "Alibaba's multilingual model with strong performance",
+      "category": "general",
+      "size_gb": 4.4,
+      "context_window": 32768,
+      "recommended_use": [
+        "chat",
+        "multilingual",
+        "reasoning"
+      ],
+      "install_command": "ollama pull qwen2:7b",
+      "enabled": false,
+      "priority": 10
+    },
+    {
+      "id": "neural-chat:7b",
+      "name": "Neural Chat 7B",
+      "description": "Intel's optimized chat model with good reasoning",
+      "category": "reasoning",
+      "size_gb": 4.1,
+      "context_window": 8192,
+      "recommended_use": [
+        "chat",
+        "reasoning",
+        "analysis"
+      ],
+      "install_command": "ollama pull neural-chat:7b",
+      "enabled": false,
+      "priority": 11
+    },
+    {
+      "id": "orca-mini:3b",
+      "name": "Orca Mini 3B",
+      "description": "Compact model optimized for reasoning tasks",
+      "category": "reasoning",
+      "size_gb": 1.9,
+      "context_window": 2048,
+      "recommended_use": [
+        "reasoning",
+        "qa",
+        "analysis"
+      ],
+      "install_command": "ollama pull orca-mini:3b",
+      "enabled": false,
+      "priority": 12
+    }
+  ],
+  "default_model": "dolphin-llama3:8b",
+  "categories": {
+    "general": {
+      "name": "General Purpose",
+      "description": "Models suitable for general chat and question answering"
+    },
+    "creative": {
+      "name": "Creative Writing",
+      "description": "Models optimized for creative content and storytelling"
+    },
+    "reasoning": {
+      "name": "Reasoning & Analysis",
+      "description": "Models optimized for logical reasoning and analysis"
+    },
+    "coding": {
+      "name": "Code Generation",
+      "description": "Models specialized for programming and code generation"
+    }
+  },
+  "config": {
+    "auto_enable_available": true,
+    "show_disabled_models": false,
+    "max_models_shown": 10,
+    "sort_by": "priority"
+  }
+}

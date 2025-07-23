@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
+import { useModelConfig, ModelConfig } from './hooks/useModelConfig';
+import ModelManager from './components/ModelManager';
+import ConversationChat from './components/ConversationChat';
+import './components/ConversationChat.css';
 
 interface HealthStatus {
   status: string;
@@ -10,34 +14,95 @@ interface HealthStatus {
   api_version: string;
 }
 
-interface ChatMessage {
+interface WriteMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
 }
 
-interface ChatResponse {
-  response: string;
-  token_info: any;
-  response_time: number;
-  word_count: number;
-  model_used: string;
+interface Conversation {
+  id: string;
+  title: string;
+  model_id: string;
+  message_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface Message {
+  id: string;
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+  token_count?: number;
+}
+
+interface TokenInfo {
+  estimated_tokens: number;
+  context_limit: number;
+  fits: boolean;
+  usage_percent: number;
 }
 
 const App: React.FC = () => {
+  const {
+    config: modelConfig,
+    loading: modelConfigLoading,
+    error: modelConfigError,
+    getEnabledModels,
+    getModelById
+  } = useModelConfig();
   const [health, setHealth] = useState<HealthStatus | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [writeResults, setWriteResults] = useState<ChatMessage[]>([]);
-  const [inputMessage, setInputMessage] = useState('');
+  const [writeResults, setWriteResults] = useState<WriteMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'chat' | 'write'>('chat');
   const [stylePrompt, setStylePrompt] = useState('');
   const [styleExamples, setStyleExamples] = useState('');
   const [wordLimit, setWordLimit] = useState(200);
+  const [selectedModel, setSelectedModel] = useState('');
+  const [showModelManager, setShowModelManager] = useState(false);
+
+  // Persistent conversation state with caching
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [currentConversation, setCurrentConversation] = useState<string | null>(null);
+  const [conversationCache, setConversationCache] = useState<Map<string, Message[]>>(new Map());
+  const [tokenInfo, setTokenInfo] = useState<TokenInfo | null>(null);
+
+  // Get messages for current conversation from cache
+  const messages = currentConversation && conversationCache.has(currentConversation) 
+    ? conversationCache.get(currentConversation) || []
+    : [];
+
+  // Function to update messages in cache
+  const setMessages = (messagesOrUpdater: Message[] | ((prev: Message[]) => Message[])) => {
+    if (!currentConversation) return;
+    
+    setConversationCache(prev => {
+      const newCache = new Map(prev);
+      const currentMessages = newCache.get(currentConversation) || [];
+      
+      const newMessages = typeof messagesOrUpdater === 'function' 
+        ? messagesOrUpdater(currentMessages)
+        : messagesOrUpdater;
+      
+      newCache.set(currentConversation, newMessages);
+      return newCache;
+    });
+  };
+
+  // Get available models from config
+  const availableModels = modelConfig ? getEnabledModels() : [];
 
   useEffect(() => {
     checkHealth();
   }, []);
+
+  // Set default model when config loads
+  useEffect(() => {
+    if (modelConfig && !selectedModel) {
+      setSelectedModel(modelConfig.default_model);
+    }
+  }, [modelConfig, selectedModel]);
 
   const checkHealth = async () => {
     try {
@@ -48,49 +113,10 @@ const App: React.FC = () => {
     }
   };
 
-  const sendMessage = async () => {
-    if (!inputMessage.trim()) return;
-
-    const userMessage: ChatMessage = {
-      role: 'user',
-      content: inputMessage,
-      timestamp: new Date()
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    setInputMessage('');
-    setLoading(true);
-
-    try {
-      const response = await axios.post<ChatResponse>('/api/chat', {
-        message: inputMessage,
-        model: 'llama3.2:3b'
-      });
-
-      const assistantMessage: ChatMessage = {
-        role: 'assistant',
-        content: response.data.response,
-        timestamp: new Date()
-      };
-
-      setMessages(prev => [...prev, assistantMessage]);
-    } catch (error) {
-      console.error('Chat failed:', error);
-      const errorMessage: ChatMessage = {
-        role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.',
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const generateWithStyle = async () => {
     if (!stylePrompt.trim()) return;
 
-    const userMessage: ChatMessage = {
+    const userMessage: WriteMessage = {
       role: 'user',
       content: `Write about: ${stylePrompt}`,
       timestamp: new Date()
@@ -104,16 +130,16 @@ const App: React.FC = () => {
         prompt: stylePrompt,
         examples: styleExamples.trim() ? styleExamples.split('\n---\n').filter(ex => ex.trim()) : [],
         word_limit: wordLimit,
-        model: 'llama3.2:3b'
+        model: selectedModel
       });
 
-      const styledMessage: ChatMessage = {
+      const styledMessage: WriteMessage = {
         role: 'assistant',
         content: response.data.generated_text,
         timestamp: new Date()
       };
 
-      const analysisMessage: ChatMessage = {
+      const analysisMessage: WriteMessage = {
         role: 'assistant',
         content: `📊 Analysis: ${response.data.style_analysis}`,
         timestamp: new Date()
@@ -123,7 +149,7 @@ const App: React.FC = () => {
       setStylePrompt('');
     } catch (error) {
       console.error('Style generation failed:', error);
-      const errorMessage: ChatMessage = {
+      const errorMessage: WriteMessage = {
         role: 'assistant',
         content: 'Sorry, I encountered an error generating styled text. Please try again.',
         timestamp: new Date()
@@ -132,6 +158,24 @@ const App: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const getSelectedModelInfo = () => {
+    if (!modelConfig) return { 
+      name: 'Loading...', 
+      description: 'Loading model configuration...',
+      install_command: ''
+    };
+    const model = getModelById(selectedModel) || availableModels[0];
+    return model || { 
+      name: 'No Models', 
+      description: 'No models available',
+      install_command: `ollama pull ${selectedModel}`
+    };
+  };
+
+  const isModelAvailable = () => {
+    return health?.available_models?.includes(selectedModel) || false;
   };
 
   const handleKeyPress = (e: React.KeyboardEvent, action: () => void) => {
@@ -145,16 +189,54 @@ const App: React.FC = () => {
     <div className="app">
       <header className="app-header">
         <h1>🤖 On-Device LLM Assistant</h1>
-        <div className="status-indicator">
-          {health ? (
-            <span className={`status ${health.status}`}>
-              {health.ollama_running ? '🟢' : '🟡'} 
-              {health.status === 'healthy' ? 'Online' : 
-               health.status === 'demo_mode' ? 'Demo Mode' : 'Offline'}
-            </span>
-          ) : (
-            <span className="status checking">🔄 Checking...</span>
-          )}
+        <div className="header-controls">
+          <div className="model-selector">
+            <label>Model:</label>
+            <select 
+              value={selectedModel} 
+              onChange={(e) => setSelectedModel(e.target.value)}
+              className="model-select"
+              title={getSelectedModelInfo().description}
+              disabled={modelConfigLoading}
+            >
+              {modelConfigLoading ? (
+                <option value="">Loading models...</option>
+              ) : availableModels.length > 0 ? (
+                availableModels.map(model => (
+                  <option key={model.id} value={model.id}>
+                    {model.name} {health?.available_models?.includes(model.id) ? '✓' : '⚠️'}
+                  </option>
+                ))
+              ) : (
+                <option value="">No models configured</option>
+              )}
+            </select>
+            <div className="model-status">
+              {isModelAvailable() ? (
+                <span className="model-available" title="Model is available">✓</span>
+              ) : (
+                <span className="model-unavailable" title="Model not installed - run: ollama pull">⚠️</span>
+              )}
+            </div>
+          </div>
+          <button 
+            className="config-button"
+            onClick={() => setShowModelManager(true)}
+            title="Configure Models"
+          >
+            ⚙️ Models
+          </button>
+          <div className="status-indicator">
+            {health ? (
+              <span className={`status ${health.status}`}>
+                {health.ollama_running ? '🟢' : '🟡'} 
+                {health.status === 'healthy' ? 'Online' : 
+                 health.status === 'demo_mode' ? 'Demo Mode' : 'Offline'}
+              </span>
+            ) : (
+              <span className="status checking">🔄 Checking...</span>
+            )}
+          </div>
         </div>
       </header>
 
@@ -174,60 +256,46 @@ const App: React.FC = () => {
       </nav>
 
       <main className="main-content">
-        {activeTab === 'chat' ? (
-          <div className="chat-container">
-            <div className="messages-container">
-              {messages.length === 0 ? (
-                <div className="welcome-message">
-                  <h3>Welcome to your On-Device AI Assistant!</h3>
-                  <p>Start a conversation with your local language model.</p>
-                  {health && !health.ollama_running && (
-                    <div className="demo-notice">
-                      <strong>Demo Mode:</strong> Install Ollama for full functionality
-                    </div>
-                  )}
-                </div>
-              ) : (
-                messages.map((message, index) => (
-                  <div key={index} className={`message ${message.role}`}>
-                    <div className="message-content">
-                      {message.content}
-                    </div>
-                    <div className="message-timestamp">
-                      {message.timestamp.toLocaleTimeString()}
-                    </div>
-                  </div>
-                ))
-              )}
-              {loading && (
-                <div className="message assistant">
-                  <div className="message-content typing">
-                    🤔 Thinking...
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="input-container">
-              <div className="chat-input">
-                <textarea
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  onKeyPress={(e) => handleKeyPress(e, sendMessage)}
-                  placeholder="Type your message here... (Press Enter to send)"
-                  disabled={loading}
-                  rows={3}
-                />
-                <button 
-                  onClick={sendMessage}
-                  disabled={loading || !inputMessage.trim()}
-                  className="send-button"
-                >
-                  {loading ? '⏳' : '📤'} Send
-                </button>
+        {modelConfigError && (
+          <div className="model-warning">
+            <div className="warning-content">
+              <span className="warning-icon">⚠️</span>
+              <div className="warning-text">
+                <strong>Configuration Error:</strong> {modelConfigError}
               </div>
             </div>
           </div>
+        )}
+        
+        {!isModelAvailable() && health?.ollama_running && selectedModel && (
+          <div className="model-warning">
+            <div className="warning-content">
+              <span className="warning-icon">⚠️</span>
+              <div className="warning-text">
+                <strong>Model not available:</strong> {getSelectedModelInfo().name} is not installed.
+                <br />
+                <span className="install-command">Run: <code>{getSelectedModelInfo().install_command || `ollama pull ${selectedModel}`}</code></span>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {activeTab === 'chat' ? (
+          <ConversationChat 
+            selectedModel={selectedModel}
+            availableModels={availableModels.map(model => ({
+              id: model.id,
+              name: model.name
+            }))}
+            conversations={conversations}
+            setConversations={setConversations}
+            currentConversation={currentConversation}
+            setCurrentConversation={setCurrentConversation}
+            messages={messages}
+            setMessages={setMessages}
+            tokenInfo={tokenInfo}
+            setTokenInfo={setTokenInfo}
+          />
         ) : (
           <div className="write-container">
             {/* Input Section */}
@@ -332,6 +400,11 @@ const App: React.FC = () => {
           </div>
         )}
       </main>
+
+      <ModelManager 
+        isOpen={showModelManager}
+        onClose={() => setShowModelManager(false)}
+      />
 
       <footer className="app-footer">
         <div className="footer-info">

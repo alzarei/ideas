@@ -47,6 +47,20 @@ class OllamaClient:
         except requests.RequestException:
             return None
     
+    def chat(self, model, messages, timeout=60):
+        """Generate chat response with conversation history"""
+        try:
+            response = requests.post(
+                f"{self.base_url}/api/chat",
+                json={"model": model, "messages": messages, "stream": False},
+                timeout=timeout
+            )
+            if response.status_code == 200:
+                return response.json().get('message', {}).get('content', '')
+            return None
+        except requests.RequestException:
+            return None
+    
     def estimate_tokens(self, text):
         """Estimate token count (1 token ≈ 4 characters)"""
         return len(text) // 4
