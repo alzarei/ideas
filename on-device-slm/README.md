@@ -2,6 +2,45 @@
 
 A complete solution for running small language models locally with an intuitive web interface. Features conversation management, model switching, and intelligent system analysis capabilities.
 
+## 👤 For Non-Technical Users
+
+### Super Simple Setup (5 minutes)
+1. **Install prerequisites** (one-time):
+   - [Python 3.8+](https://python.org/downloads/) - Click download, run installer
+   - [Node.js 16+](https://nodejs.org/) - Click download, run installer  
+   - [Ollama](https://ollama.ai/download) - Click download, run installer
+
+2. **Get the project** - Download ZIP from GitHub or get folder from developer
+
+3. **One command setup**:
+   ```cmd
+   python setup.py
+   ```
+   This automatically installs everything and opens the app in your browser!
+
+4. **Start using**:
+   - **Windows**: Double-click `start.bat`
+   - **Mac/Linux**: Double-click `start.sh`
+   - Opens at: http://localhost:8000
+
+### What You Get
+- 🤖 **Private AI Chat** - Talk to AI models running on your computer
+- 💬 **Conversation History** - All chats saved locally
+- 🔄 **Multiple AI Models** - Switch between different AI personalities
+- 🔒 **100% Private** - No internet required, no data shared
+- 🖥️ **Simple Interface** - Just type and chat like any messaging app
+
+**📖 Need more help? See the [Complete User Guide](USER_GUIDE.md)**
+
+---
+
+## 🧑‍💻 For Developers
+
+**📚 Quick Links:**
+- [Quick Start Guide](QUICKSTART.md) - 5-minute setup
+- [Development Guide](DEVELOPMENT.md) - Detailed development workflow
+- [Architecture Guide](ARCHITECTURE.md) - System overview
+
 ## ⚡ Quick Start
 
 ### Option 1: Automated Setup (Recommended)
@@ -247,6 +286,35 @@ ollama serve
 .\dev.ps1 reset         # Reset everything
 .\dev.ps1 setup         # Rebuild environment
 ```
+
+## 📚 Documentation
+
+### For Users
+- **[USER_GUIDE.md](USER_GUIDE.md)** - Complete guide for non-technical users
+- **[QUICKSTART.md](QUICKSTART.md)** - 5-minute setup guide
+
+### For Developers  
+- **[DEVELOPMENT.md](DEVELOPMENT.md)** - Detailed development workflow
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - System architecture overview
+- **[STYLE_TRAINING_GUIDE.md](STYLE_TRAINING_GUIDE.md)** - Model training guidelines
+- **[TOKEN_LIMITS_GUIDE.md](TOKEN_LIMITS_GUIDE.md)** - Context management
+
+### Setup Verification
+- Run `python verify.py` to check installation status
+- Check `examples/` directory for usage samples
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/new-feature`
+3. Make changes and test: `.\dev.ps1 test`
+4. Commit changes: `git commit -am 'Add new feature'`
+5. Push to branch: `git push origin feature/new-feature`
+6. Create a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 **Frontend build errors:**
 ```bash
