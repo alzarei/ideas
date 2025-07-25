@@ -57,10 +57,73 @@ def start_backend():
     
     return process
 
+def warning_mark(message):
+    """Print warning symbol"""
+    print(f"⚠️  {message}")
+
+def info_mark(message):
+    """Print info symbol"""
+    print(f"ℹ️  {message}")
+
+def check_dependencies():
+    """Check if all dependencies are installed"""
+    try:
+        import fastapi
+        import uvicorn
+        import requests
+        return True
+    except ImportError:
+        return False
+
+def check_frontend_build():
+    """Check if frontend is built"""
+    frontend_build = Path(__file__).parent / "frontend" / "build"
+    return frontend_build.exists()
+
+def prompt_setup():
+    """Prompt user to run setup if dependencies are missing"""
+    print("🔧 Dependencies not found!")
+    print("It looks like the project hasn't been set up yet.")
+    print()
+    print("Quick setup options:")
+    print("1. Run automated setup: python setup.py")
+    print("2. Manual install: pip install -r requirements.txt")
+    print("3. PowerShell script: .\\dev.ps1 setup")
+    print("4. Make: make setup")
+    print()
+    
+    choice = input("Would you like to run automated setup now? (y/n): ").lower()
+    if choice == 'y':
+        print("\n🚀 Running setup...")
+        try:
+            subprocess.run([sys.executable, "setup.py"], check=True)
+            return True
+        except subprocess.CalledProcessError:
+            print("❌ Setup failed. Please try manual installation.")
+            return False
+    return False
+
 def main():
     """Main launcher function"""
     print("🤖 On-Device LLM Assistant Launcher")
     print("=" * 40)
+    
+    # Check dependencies first
+    if not check_dependencies():
+        if not prompt_setup():
+            print("\n📖 Setup required before starting.")
+            print("Run 'python setup.py' or see README.md for instructions.")
+            return
+        
+        # Re-check after setup
+        if not check_dependencies():
+            print("❌ Dependencies still missing after setup.")
+            return
+    
+    # Check frontend build
+    if not check_frontend_build():
+        warning_mark("Frontend not built for production")
+        info_mark("For full functionality, run: cd frontend && npm run build")
     
     # Check Ollama status
     if check_ollama():
@@ -69,17 +132,10 @@ def main():
         print("⚠️  Ollama not detected - API will run in demo mode")
         print("   To enable full functionality:")
         print("   1. Install Ollama: https://ollama.ai")
-        print("   2. Download model: ollama pull llama3.2:3b")
-        print("   3. Restart this application")
+        print("   2. Start service: ollama serve")
+        print("   3. Download model: ollama pull llama3.2:3b")
+        print("   4. Restart this application")
         print()
-    
-    # Install dependencies
-    try:
-        install_dependencies()
-    except subprocess.CalledProcessError:
-        print("❌ Failed to install dependencies")
-        print("Try running: pip install -r requirements.txt")
-        return
     
     # Start backend
     backend_process = start_backend()
@@ -98,6 +154,7 @@ def main():
     print("\n✅ Application started successfully!")
     print("📖 API Documentation: http://localhost:8000/api/docs")
     print("🏥 Health Check: http://localhost:8000/api/health")
+    print("🔍 Verify Installation: python verify.py")
     print("\n🛑 Press Ctrl+C to stop the server")
     
     try:

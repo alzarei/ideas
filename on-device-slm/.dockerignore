@@ -1,0 +1,51 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+docs/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+venv/
+.env
+.venv
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Frontend build (will be rebuilt in container)
+frontend/build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Development scripts
+dev.ps1
+Makefile
+start.bat
+start.sh
+setup.py
+verify.py
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore

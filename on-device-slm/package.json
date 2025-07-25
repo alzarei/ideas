@@ -1,0 +1,59 @@
+{
+  "name": "on-device-llm-assistant",
+  "version": "1.0.0",
+  "description": "Complete solution for running small language models locally with conversation management",
+  "scripts": {
+    "setup": "python setup.py",
+    "start": "python launcher.py",
+    "start:dev": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
+    "start:backend": "cd backend && python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000",
+    "start:frontend": "cd frontend && npm start",
+    "build": "cd frontend && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+    "install:all": "pip install -r requirements.txt && cd frontend && npm install",
+    "install:python": "pip install -r requirements.txt",
+    "install:frontend": "cd frontend && npm install",
+    "test": "python -m pytest tests/ -v && cd frontend && npm test -- --watchAll=false",
+    "test:python": "python -m pytest tests/ -v",
+    "test:frontend": "cd frontend && npm test -- --watchAll=false",
+    "clean": "rimraf frontend/build frontend/node_modules **/__pycache__ **/*.pyc",
+    "clean:frontend": "cd frontend && rimraf build node_modules package-lock.json",
+    "clean:python": "rimraf **/__pycache__ **/*.pyc",
+    "verify": "python verify.py",
+    "models:list": "ollama list",
+    "models:pull": "ollama pull llama3.2:3b && ollama pull llama3.2:1b",
+    "dev": "npm run start:dev",
+    "postinstall": "npm run install:frontend"
+  },
+  "keywords": [
+    "ai",
+    "llm",
+    "ollama",
+    "local-ai",
+    "conversation",
+    "chat",
+    "on-device",
+    "privacy",
+    "fastapi",
+    "react"
+  ],
+  "author": "On-Device LLM Assistant Team",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "rimraf": "^5.0.5"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0",
+    "python": ">=3.8.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/on-device-llm-assistant"
+  },
+  "homepage": "https://github.com/your-org/on-device-llm-assistant#readme",
+  "bugs": {
+    "url": "https://github.com/your-org/on-device-llm-assistant/issues"
+  }
+}

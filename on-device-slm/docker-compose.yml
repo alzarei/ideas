@@ -1,0 +1,37 @@
+# On-Device LLM Assistant - Docker Compose
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - ENVIRONMENT=production
+    volumes:
+      # Mount config directory for model configuration
+      - ./config:/app/config:ro
+      # Mount writing samples if needed
+      - ./writing_samples:/app/writing_samples:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Add Ollama service (uncomment to run Ollama in container)
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ollama_data:/root/.ollama
+  #   restart: unless-stopped
+  #   environment:
+  #     - OLLAMA_ORIGINS=*
+
+# volumes:
+#   ollama_data:
