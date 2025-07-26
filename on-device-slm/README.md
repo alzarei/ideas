@@ -43,7 +43,40 @@ A complete solution for running small language models locally with an intuitive 
 
 ## ⚡ Quick Start
 
-### Option 1: Automated Setup (Recommended)
+### Option 1: Super Quick Setup (NEW! 🚀)
+**Fully automated - installs everything including Ollama:**
+```bash
+# One command that does EVERYTHING automatically
+python quick_setup.py
+```
+This new script will:
+- ✅ Auto-install Ollama (via package managers or direct download)
+- ✅ Create Python virtual environment
+- ✅ Install all dependencies
+- ✅ Build frontend
+- ✅ Start Ollama service
+- ✅ Download recommended AI models
+- ✅ Create smart startup scripts
+- ✅ Launch the application
+
+### Option 2: Enhanced Automated Setup
+```bash
+# Enhanced setup with better error handling
+python setup_improved.py
+```
+
+### Option 3: Platform-Specific Enhanced Scripts
+
+**Windows (Enhanced):**
+```powershell
+# Complete setup including Ollama auto-installation
+.\dev_enhanced.ps1 setup
+
+# Just install Ollama automatically
+.\dev_enhanced.ps1 setup-ollama
+```
+
+### Option 4: Original Automated Setup
 ```bash
 # Clone the repository
 git clone <repository-url>
@@ -53,7 +86,7 @@ cd on-device-slm
 python setup.py
 ```
 
-### Option 2: Manual Setup
+### Option 5: Manual Setup
 ```bash
 # 1. Install system dependencies
 # - Python 3.8+ 
@@ -68,7 +101,7 @@ python setup.py         # Full automated setup
 make setup              # If you have Make installed
 ```
 
-### Option 3: Development Scripts
+### Option 6: Development Scripts
 **Windows:**
 ```powershell
 .\dev.ps1 start         # Start application
