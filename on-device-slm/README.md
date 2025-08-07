@@ -1,109 +1,95 @@
 # On-Device LLM Assistant
 
-A complete solution for running small language models locally with an intuitive web interface. Features conversation management, model switching, and intelligent system analysis capabilities.
+A complete solution for running Large Language Models locally with a beautiful web interface.
 
-## 👤 For Non-Technical Users
+## Quick Start
 
-### Super Simple Setup (5 minutes)
-1. **Install prerequisites** (one-time):
-   - [Python 3.8+](https://python.org/downloads/) - Click download, run installer
-   - [Node.js 16+](https://nodejs.org/) - Click download, run installer  
-   - [Ollama](https://ollama.ai/download) - Click download, run installer
+**Option 1: Complete First-Time Setup**
+**Does everything automatically - perfect for new users!**
+```powershell
+powershell -ExecutionPolicy Bypass -File "one_click_setup.ps1"
+```
+- Installs Python, Node.js, Ollama automatically
+- Sets up entire project 
+- Starts the application
+- **No user input required!**
 
-2. **Get the project** - Download ZIP from GitHub or get folder from developer
+### ⚡ **start_app.bat** - Daily Startup
+**Quick startup for daily use - just double-click!**
+```batch
+start_app.bat
+```n for running small language models locally with an intuitive web interface. Features conversation management, model switching, and intelligent system analysis capabilities.
 
-3. **One command setup**:
-   ```cmd
-   python setup.py
-   ```
-   This automatically installs everything and opens the app in your browser!
+## **ONE-CLICK SETUP** (30 seconds)
 
-4. **Start using**:
-   - **Windows**: Double-click `start.bat`
-   - **Mac/Linux**: Double-click `start.sh`
-   - Opens at: http://localhost:8000
+### **Ultimate Easy Setup - Just Double-Click!**
 
-### What You Get
+**Option 1: Complete First-Time Setup**
+1. **Double-click:** `setup.bat`
+2. **Wait 2-3 minutes** for automatic installation
+3. **Done!** Your AI assistant opens in the browser
+
+**Option 2: Daily Quick Start** (after setup)
+1. **Double-click:** `start_app.bat` 
+2. **Wait 15 seconds** for services to start
+3. **Chat interface opens automatically!**
+
+### 🌐 **Access Your AI Assistant:**
+- **Chat Interface:** http://localhost:3000
+- **API Server:** http://localhost:8000
+
+### 🎁 **What You Get:**
 - 🤖 **Private AI Chat** - Talk to AI models running on your computer
 - 💬 **Conversation History** - All chats saved locally
-- 🔄 **Multiple AI Models** - Switch between different AI personalities
+- 🔄 **Multiple AI Models** - Switch between different AI personalities  
 - 🔒 **100% Private** - No internet required, no data shared
 - 🖥️ **Simple Interface** - Just type and chat like any messaging app
 
-**📖 Need more help? See the [Complete User Guide](USER_GUIDE.md)**
+**💡 That's it! No technical knowledge required - everything is automated!**
+
+---
+
+## �️ **Available Scripts**
+
+### � **one_click_setup_fixed.ps1** - Ultimate Setup
+**Does everything automatically - perfect for new users!**
+```powershell
+powershell -ExecutionPolicy Bypass -File "one_click_setup_fixed.ps1"
+```
+- Installs Python, Node.js, Ollama automatically
+- Sets up entire project 
+- Starts the application
+- **No user input required!**
+
+### ⚡ **start_both.bat** - Daily Startup
+**Quick startup for daily use - just double-click!**
+```batch
+start_both.bat
+```
+- Starts both frontend and backend
+- Opens in seconds
+- Perfect for regular use
+
+### 🛠️ **dev_enhanced_fixed.ps1** - Developer Commands
+**Advanced control for developers:**
+```powershell
+# Show all commands
+powershell -ExecutionPolicy Bypass -File "dev_enhanced_fixed.ps1" help
+
+# Individual controls
+powershell -ExecutionPolicy Bypass -File "dev_enhanced_fixed.ps1" start-backend
+powershell -ExecutionPolicy Bypass -File "dev_enhanced_fixed.ps1" start-frontend
+powershell -ExecutionPolicy Bypass -File "dev_enhanced_fixed.ps1" models-list
+```
 
 ---
 
 ## 🧑‍💻 For Developers
 
 **📚 Quick Links:**
-- [Quick Start Guide](QUICKSTART.md) - 5-minute setup
+- [Quick Start Guide](QUICK_START_GUIDE.md) - Complete setup instructions
 - [Development Guide](DEVELOPMENT.md) - Detailed development workflow
 - [Architecture Guide](ARCHITECTURE.md) - System overview
-
-## ⚡ Quick Start
-
-### Option 1: Super Quick Setup (NEW! 🚀)
-**Fully automated - installs everything including Ollama:**
-```bash
-# One command that does EVERYTHING automatically
-python quick_setup.py
-```
-This new script will:
-- ✅ Auto-install Ollama (via package managers or direct download)
-- ✅ Create Python virtual environment
-- ✅ Install all dependencies
-- ✅ Build frontend
-- ✅ Start Ollama service
-- ✅ Download recommended AI models
-- ✅ Create smart startup scripts
-- ✅ Launch the application
-
-### Option 2: Enhanced Automated Setup
-```bash
-# Enhanced setup with better error handling
-python setup_improved.py
-```
-
-### Option 3: Platform-Specific Enhanced Scripts
-
-**Windows (Enhanced):**
-```powershell
-# Complete setup including Ollama auto-installation
-.\dev_enhanced.ps1 setup
-
-# Just install Ollama automatically
-.\dev_enhanced.ps1 setup-ollama
-```
-
-### Option 4: Original Automated Setup
-```bash
-# Clone the repository
-git clone <repository-url>
-cd on-device-slm
-
-# Run the automated setup
-python setup.py
-```
-
-### Option 5: Manual Setup
-```bash
-# 1. Install system dependencies
-# - Python 3.8+ 
-# - Node.js 16+
-# - Ollama (https://ollama.ai)
-
-# 2. Run setup commands
-python setup.py         # Full automated setup
-# OR
-.\dev.ps1 setup         # Windows PowerShell
-# OR  
-make setup              # If you have Make installed
-```
-
-### Option 6: Development Scripts
-**Windows:**
-```powershell
 .\dev.ps1 start         # Start application
 .\dev.ps1 start-dev     # Development mode
 .\dev.ps1 help          # See all commands
