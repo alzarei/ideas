@@ -1,0 +1,20 @@
+fix: completely overhaul one-click setup script to resolve critical installation issues
+
+- Fix infinite download loops in winget installations with timeout protection
+- Add PATH environment refresh to detect newly installed programs (especially Ollama)
+- Implement proper Python executable detection to avoid Microsoft Store aliases
+- Remove admin permission prompts by integrating all setup steps into single script
+- Add robust version checking for Ollama with fallback detection methods
+- Eliminate separate PowerShell processes that caused permission loops
+- Add silent installation flags for fully automated setup
+- Implement graceful error handling and diagnostic messaging
+
+The setup script now works completely automatically without user intervention,
+successfully installing dependencies and launching the On-Device LLM Assistant.
+
+Resolves issues with:
+- Python/Ollama detection failures
+- Infinite winget download loops  
+- Permission prompt loops
+- PATH environment synchronization
+- Microsoft Store Python alias conflicts
